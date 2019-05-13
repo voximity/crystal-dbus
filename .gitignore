@@ -1,9 +1,5 @@
-*
-!.gitignore
-
-!*.md
-!README*
-!LICENSE*
-!/src/
-!/src/*.cr
-!/example.cr
+/docs/
+/lib/
+/bin/
+/.shards/
+*.dwarf
