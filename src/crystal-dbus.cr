@@ -1,6 +1,7 @@
 require "./lib"
 require "./signature"
 require "./util"
+require "json"
 
 module DBus
 extend self
@@ -8,6 +9,42 @@ extend self
   alias BusType = LibDBus::BusType
   
   class Variant
+    def self.json(value : VariantType, j : JSON::Builder)
+      if value.is_a? Variant
+        Variant.json value.value, j
+      elsif value.is_a? Bool
+        j.bool value
+      elsif value.is_a? Int || value.is_a? Float64
+        j.number value
+      elsif value.is_a? UInt8 || value.is_a? UInt16 || value.is_a? UInt32 || value.is_a? UInt64 || value.is_a? String
+        j.string value.to_s
+      elsif value.is_a? Array(VariantType)
+        j.array do
+          value.as(Array(VariantType)).each do |child|
+            Variant.json child, j
+          end
+        end
+      elsif value.is_a? Hash(VariantType, VariantType)
+        j.object do
+          value.as(Hash(VariantType, VariantType)).each do |k, v|
+            j.field k.to_s do
+              Variant.json v, j
+            end
+          end
+        end
+      else
+        raise "expected a VariantType, got a #{value.class.to_s}"
+      end
+    end
+
+    def self.json(value : VariantType)
+      JSON.build do |j|
+        Variant.json value, j
+      end
+    end
+
+
+
     getter value : VariantType
     getter signature : String?
 
@@ -19,7 +56,7 @@ extend self
     end
     
     def inspect(io : IO)
-      io << "DBus.variant(" << value << ")"
+      io << "DBus::Variant<" << value.class.to_s << ">(" << value << ")"
     end
   end
   
