@@ -8,10 +8,10 @@ extend self
   alias BusType = LibDBus::BusType
   
   class Variant
-    getter value : Type
+    getter value : VariantType
     getter signature : String?
 
-    def initialize(@value : Type, @signature : String? = nil)
+    def initialize(@value : VariantType, @signature : String? = nil)
     end
     
     def signature
@@ -27,7 +27,8 @@ extend self
     Variant.new(value, signature)
   end
   
-  alias Type = UInt8 | Bool | Int16 | UInt16 | Int32 | UInt32 | Int64 | UInt64 | Float64 | String | Array(Type) | Hash(Type, Type) | Variant
+  alias VariantHash = Hash(VariantType, VariantType)
+  alias VariantType = UInt8 | Bool | Int16 | UInt16 | Int32 | UInt32 | Int64 | UInt64 | Float64 | String | Array(VariantType) | Hash(VariantType, VariantType) | Variant
   
   class Bus
     getter type : BusType
@@ -98,6 +99,10 @@ extend self
       bus.inspect(io)
       io << ' ' << destination << ' ' << path
     end
+
+    def property_interface
+      interface "org.freedesktop.DBus.Properties"
+    end
   end
   
   
@@ -106,6 +111,14 @@ extend self
     getter interface : String
 
     def initialize(@object : Object, @interface : String)
+    end
+
+    def get(key : String, timeout : Int32 = -1)
+      @object.property_interface.call("Get", [@interface, key], timeout: timeout)
+    end
+
+    def set(key : String, value : T, timeout : Int32 = -1) forall T
+      @object.property_interface.call("Set", [@interface, key, value], timeout: timeout)
     end
     
     def call(name : String, args : Array = [] of Nil, signature : String? = nil, timeout : Int32 = -1)
@@ -273,7 +286,7 @@ extend self
       
       iter_v = uninitialized LibDBus::MessageIter
       iter = pointerof(iter_v)
-      reply = [] of Type
+      reply = [] of VariantType
       if LibDBus.message_iter_init(msg, iter) == LibDBus::TRUE
         while LibDBus.message_iter_get_arg_type(iter) != LibDBus::TYPE_INVALID.ord
           reply << read_arg(iter)
@@ -347,7 +360,7 @@ extend self
           )
 
           if LibDBus.message_iter_get_element_type(iter) == LibDBus::TYPE_DICT_ENTRY.ord
-            result_hash = {} of Type => Type
+            result_hash = {} of VariantType => VariantType
             
             while LibDBus.message_iter_get_arg_type(arr_iter) != LibDBus::TYPE_INVALID.ord
               entry_iter_v = uninitialized LibDBus::MessageIter
@@ -366,7 +379,7 @@ extend self
             result_hash
 
           else
-            result_array = [] of Type
+            result_array = [] of VariantType
             
             while LibDBus.message_iter_get_arg_type(arr_iter) != LibDBus::TYPE_INVALID.ord
               result_array << read_arg(arr_iter)

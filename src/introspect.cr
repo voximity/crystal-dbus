@@ -1,5 +1,5 @@
 require "xml"
-require "./dbus"
+require "./crystal-dbus"
 
 module DBus
   class Object
